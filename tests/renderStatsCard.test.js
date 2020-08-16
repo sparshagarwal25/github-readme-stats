@@ -1,12 +1,13 @@
 require("@testing-library/jest-dom");
 const cssToObject = require("css-to-object");
-const renderStatsCard = require("../src/renderStatsCard");
+const renderStatsCard = require("../src/cards/stats-card");
 
 const {
   getByTestId,
   queryByTestId,
   queryAllByTestId,
 } = require("@testing-library/dom");
+const themes = require("../themes");
 
 describe("Test renderStatsCard", () => {
   const stats = {
@@ -34,13 +35,27 @@ describe("Test renderStatsCard", () => {
     expect(getByTestId(document.body, "issues").textContent).toBe("300");
     expect(getByTestId(document.body, "prs").textContent).toBe("400");
     expect(getByTestId(document.body, "contribs").textContent).toBe("500");
-    expect(queryByTestId(document.body, "card-border")).toBeInTheDocument();
+    expect(queryByTestId(document.body, "card-bg")).toBeInTheDocument();
     expect(queryByTestId(document.body, "rank-circle")).toBeInTheDocument();
+  });
+
+  it("should have proper name apostrophe", () => {
+    document.body.innerHTML = renderStatsCard({ ...stats, name: "Anil Das" });
+
+    expect(document.getElementsByClassName("header")[0].textContent).toBe(
+      "Anil Das' GitHub Stats"
+    );
+
+    document.body.innerHTML = renderStatsCard({ ...stats, name: "Felix" });
+
+    expect(document.getElementsByClassName("header")[0].textContent).toBe(
+      "Felix' GitHub Stats"
+    );
   });
 
   it("should hide individual stats", () => {
     document.body.innerHTML = renderStatsCard(stats, {
-      hide: "['issues', 'prs', 'contribs']",
+      hide: ["issues", "prs", "contribs"],
     });
 
     expect(
@@ -52,12 +67,6 @@ describe("Test renderStatsCard", () => {
     expect(queryByTestId(document.body, "issues")).toBeNull();
     expect(queryByTestId(document.body, "prs")).toBeNull();
     expect(queryByTestId(document.body, "contribs")).toBeNull();
-  });
-
-  it("should hide_border", () => {
-    document.body.innerHTML = renderStatsCard(stats, { hide_border: true });
-
-    expect(queryByTestId(document.body, "card-border")).not.toBeInTheDocument();
   });
 
   it("should hide_rank", () => {
@@ -79,9 +88,9 @@ describe("Test renderStatsCard", () => {
     expect(headerClassStyles.fill).toBe("#2f80ed");
     expect(statClassStyles.fill).toBe("#333");
     expect(iconClassStyles.fill).toBe("#4c71f2");
-    expect(queryByTestId(document.body, "card-border")).toHaveAttribute(
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
       "fill",
-      "#FFFEFE"
+      "#fffefe"
     );
   });
 
@@ -105,39 +114,77 @@ describe("Test renderStatsCard", () => {
     expect(headerClassStyles.fill).toBe(`#${customColors.title_color}`);
     expect(statClassStyles.fill).toBe(`#${customColors.text_color}`);
     expect(iconClassStyles.fill).toBe(`#${customColors.icon_color}`);
-    expect(queryByTestId(document.body, "card-border")).toHaveAttribute(
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
       "fill",
       "#252525"
     );
   });
 
-  it("should hide the title", () => {
+  it("should render custom colors with themes", () => {
     document.body.innerHTML = renderStatsCard(stats, {
-      hide_title: true,
+      title_color: "5a0",
+      theme: "radical",
     });
 
-    expect(document.getElementsByClassName("header")[0]).toBeUndefined();
-    expect(document.getElementsByTagName("svg")[0]).toHaveAttribute(
-      "height",
-      "165"
-    );
-    expect(queryByTestId(document.body, "card-body-content")).toHaveAttribute(
-      "transform",
-      "translate(0, -30)"
+    const styleTag = document.querySelector("style");
+    const stylesObject = cssToObject(styleTag.innerHTML);
+
+    const headerClassStyles = stylesObject[".header"];
+    const statClassStyles = stylesObject[".stat"];
+    const iconClassStyles = stylesObject[".icon"];
+
+    expect(headerClassStyles.fill).toBe("#5a0");
+    expect(statClassStyles.fill).toBe(`#${themes.radical.text_color}`);
+    expect(iconClassStyles.fill).toBe(`#${themes.radical.icon_color}`);
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
+      "fill",
+      `#${themes.radical.bg_color}`
     );
   });
 
-  it("should not hide the title", () => {
-    document.body.innerHTML = renderStatsCard(stats, {});
+  it("should render with all the themes", () => {
+    Object.keys(themes).forEach((name) => {
+      document.body.innerHTML = renderStatsCard(stats, {
+        theme: name,
+      });
 
-    expect(document.getElementsByClassName("header")[0]).toBeDefined();
-    expect(document.getElementsByTagName("svg")[0]).toHaveAttribute(
-      "height",
-      "195"
-    );
-    expect(queryByTestId(document.body, "card-body-content")).toHaveAttribute(
-      "transform",
-      "translate(0, 0)"
+      const styleTag = document.querySelector("style");
+      const stylesObject = cssToObject(styleTag.innerHTML);
+
+      const headerClassStyles = stylesObject[".header"];
+      const statClassStyles = stylesObject[".stat"];
+      const iconClassStyles = stylesObject[".icon"];
+
+      expect(headerClassStyles.fill).toBe(`#${themes[name].title_color}`);
+      expect(statClassStyles.fill).toBe(`#${themes[name].text_color}`);
+      expect(iconClassStyles.fill).toBe(`#${themes[name].icon_color}`);
+      expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
+        "fill",
+        `#${themes[name].bg_color}`
+      );
+    });
+  });
+
+  it("should render custom colors with themes and fallback to default colors if invalid", () => {
+    document.body.innerHTML = renderStatsCard(stats, {
+      title_color: "invalid color",
+      text_color: "invalid color",
+      theme: "radical",
+    });
+
+    const styleTag = document.querySelector("style");
+    const stylesObject = cssToObject(styleTag.innerHTML);
+
+    const headerClassStyles = stylesObject[".header"];
+    const statClassStyles = stylesObject[".stat"];
+    const iconClassStyles = stylesObject[".icon"];
+
+    expect(headerClassStyles.fill).toBe(`#${themes.default.title_color}`);
+    expect(statClassStyles.fill).toBe(`#${themes.default.text_color}`);
+    expect(iconClassStyles.fill).toBe(`#${themes.radical.icon_color}`);
+    expect(queryByTestId(document.body, "card-bg")).toHaveAttribute(
+      "fill",
+      `#${themes.radical.bg_color}`
     );
   });
 

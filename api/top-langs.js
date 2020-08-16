@@ -1,13 +1,13 @@
 require("dotenv").config();
 const {
   renderError,
+  clampValue,
   parseBoolean,
   parseArray,
-  clampValue,
   CONSTANTS,
 } = require("../src/common/utils");
-const fetchStats = require("../src/fetchers/stats-fetcher");
-const renderStatsCard = require("../src/cards/stats-card");
+const fetchTopLanguages = require("../src/fetchers/top-languages-fetcher");
+const renderTopLanguages = require("../src/cards/top-languages-card");
 
 module.exports = async (req, res) => {
   const {
@@ -15,28 +15,20 @@ module.exports = async (req, res) => {
     hide,
     hide_title,
     hide_border,
-    hide_rank,
-    show_icons,
-    count_private,
-    include_all_commits,
-    line_height,
+    card_width,
     title_color,
-    icon_color,
     text_color,
     bg_color,
     theme,
     cache_seconds,
+    layout,
   } = req.query;
-  let stats;
+  let topLangs;
 
   res.setHeader("Content-Type", "image/svg+xml");
 
   try {
-    stats = await fetchStats(
-      username,
-      parseBoolean(count_private),
-      parseBoolean(include_all_commits)
-    );
+    topLangs = await fetchTopLanguages(username);
 
     const cacheSeconds = clampValue(
       parseInt(cache_seconds || CONSTANTS.TWO_HOURS, 10),
@@ -47,19 +39,16 @@ module.exports = async (req, res) => {
     res.setHeader("Cache-Control", `public, max-age=${cacheSeconds}`);
 
     return res.send(
-      renderStatsCard(stats, {
-        hide: parseArray(hide),
-        show_icons: parseBoolean(show_icons),
+      renderTopLanguages(topLangs, {
         hide_title: parseBoolean(hide_title),
         hide_border: parseBoolean(hide_border),
-        hide_rank: parseBoolean(hide_rank),
-        include_all_commits: parseBoolean(include_all_commits),
-        line_height,
+        card_width: parseInt(card_width, 10),
+        hide: parseArray(hide),
         title_color,
-        icon_color,
         text_color,
         bg_color,
         theme,
+        layout,
       })
     );
   } catch (err) {
